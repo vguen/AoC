@@ -6,6 +6,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <utility>
 #include <vector>
 
 using Rucksack = std::string;
@@ -22,7 +23,7 @@ static ElfGroup read_elf_group(std::ifstream & stream)
   std::vector<Rucksack> elf_group;
   elf_group.resize(3);
   for (auto i{0u}; i < 3 && std::getline(stream, line) && !line.empty(); ++i) {
-    elf_group.push_back(line);
+    elf_group[i] = line;
   }
   return elf_group;
 }
@@ -41,10 +42,6 @@ static std::vector<ElfGroup> read_the_full_file(std::string const & filename)
   std::vector<ElfGroup> elf_groups;
   auto elf_group = read_elf_group(stream);
   while (is_elf_group_empty(elf_group)) {
-    std::cout
-      << elf_group[0] << "\n"
-      << elf_group[1] << "\n"
-      << elf_group[2] << "\n";
     elf_groups.push_back(elf_group);
     elf_group = read_elf_group(stream);
   }
@@ -67,12 +64,15 @@ static char bitset_pos_to_item(uint64_t pos)
 {
   static_assert(BITSET_SIZE % 2 == 0, "BITSET_SIZE must be even");
   constexpr auto half_bitset_size = BITSET_SIZE / 2;
+  static_assert(half_bitset_size == 26);
   // WHILE pos is UNSIGNED it is redoundant to check
-  // pos >= 0
-  if (pos <= half_bitset_size - 1) {
+  if (/* pos >= 0 && */ pos <= half_bitset_size - 1) {
     return pos + 'a';
   } else if (pos >= half_bitset_size && pos <= BITSET_SIZE - 1) {
-    return pos + 'A';
+    // pos begins at 26 (do not forget it is 0 indexed, alphabet[0..25].size() == 26)
+    // but we need to get the index in the alphabet, so we substract the size 
+    // of the first alphabet
+    return pos - half_bitset_size + 'A';
   }
   throw std::runtime_error("Unhandle case, should not reach here");
 }
@@ -85,20 +85,20 @@ static void fill_bitset_with_rucksack(Bitset & bitset, Rucksack const & rucksack
   }
 }
 
-static char find_item_common_in_each_rucksack(std::array<std::bitset<BITSET_SIZE>, 3> const & bitsets)
+static std::pair<char, uint64_t> find_item_common_in_each_rucksack(std::array<std::bitset<BITSET_SIZE>, 3> const & bitsets)
 {
   auto bitset_badge = bitsets[0] & bitsets[1] & bitsets[2];
 
   // Check that the new bitset only contains one element
   assert(bitset_badge.count() == 1);
-
-  return bitset_pos_to_item(std::countr_zero(bitset_badge.to_ullong()));
+  const auto pos = std::countr_zero(bitset_badge.to_ullong());
+  return { bitset_pos_to_item(pos), pos };
 }
 
-static std::vector<Badge> find_badges_in_elf_groups(std::vector<ElfGroup> const & elf_groups)
+static std::vector<std::pair<Badge, uint64_t>> find_badges_in_elf_groups(std::vector<ElfGroup> const & elf_groups)
 {
-  std::vector<Badge> badges;
-  badges.resize(elf_groups.size());
+  std::vector<std::pair<Badge, uint64_t>> badges;
+  badges.reserve(elf_groups.size());
 
   for (auto const & elf_group : elf_groups) {
     std::array<Bitset, 3> bitsets;
@@ -107,19 +107,20 @@ static std::vector<Badge> find_badges_in_elf_groups(std::vector<ElfGroup> const 
       fill_bitset_with_rucksack(bitsets[i], elf_group[i]);
     }
 
-    const auto badge = find_item_common_in_each_rucksack(bitsets);
-
-    badges.push_back(badge);
+    const auto [badge, priority] = find_item_common_in_each_rucksack(bitsets);
+    // increment priority since it is zero indexed
+    badges.push_back(std::make_pair(badge, priority + 1));
   }
 
   return badges;
 }
 
-static uint64_t calculate_priority_sum(std::vector<char> const & badge_list)
+static uint64_t calculate_priority_sum(std::vector<std::pair<char, uint64_t>> const & badge_list)
 {
   return std::accumulate(std::cbegin(badge_list), std::cend(badge_list),
     0u,
-    [](uint64_t sum, char badge) { return sum + item_to_bitset_pos(badge); }
+    [i = 0u](uint64_t sum, std::pair<char, uint64_t> const & badge) mutable { 
+      return sum + badge.second; }
   );
 }
 
@@ -128,9 +129,23 @@ static void print_answer(uint64_t priority_sum)
   std::cout << priority_sum << "\n";
 }
 
-int main()
+static std::string use_cli_or_default_value(int argc, char * argv[])
 {
-  const auto elf_groups = read_the_full_file("input");
+  if (argc > 2) {
+    std::cerr << "part2 [filename]" << "\n";
+    std::exit(1);
+  } else if (argc == 2) {
+    return argv[1];
+  } else {
+    return "input";
+  }
+  throw std::runtime_error("Should not end up here");
+}
+
+int main(int argc, char * argv[])
+{
+  const auto filename = use_cli_or_default_value(argc, argv);
+  const auto elf_groups = read_the_full_file(filename);
   const auto badge_list = find_badges_in_elf_groups(elf_groups);
   const auto priority_sum = calculate_priority_sum(badge_list);
   print_answer(priority_sum);
