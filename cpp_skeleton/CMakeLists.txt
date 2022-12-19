@@ -13,8 +13,8 @@ target_compile_options(project_options INTERFACE
 
 target_compile_options(project_options INTERFACE -std=c++${CMAKE_CXX_STANDARD_REQUIRED})
 
-target_compile_options(project_options INTERFACE -fsanitize=address)
-target_link_options(project_options INTERFACE -fsanitize=address)
+target_compile_options(project_options INTERFACE -fsanitize=address,undefined)
+target_link_options(project_options INTERFACE -fsanitize=address,undefined)
 
 add_library(project::options ALIAS project_options)
 
