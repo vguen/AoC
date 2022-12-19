@@ -1,4 +1,4 @@
-project(day2 CXX)
+project(day3 CXX)
 cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_CXX_STANDARD_REQUIRED 20)
