@@ -73,35 +73,7 @@ static std::vector<PairSection> read_sections_from_file(std::string filename)
 
   std::string line;
   while (std::getline(stream, line) && !line.empty()) {
-    // assert(line.size() == 7u);
-    // assert(line[1] == '-');
-    // assert(line[3] == ',');
-    // assert(line[5] == '-');
 
-    // std::array<std::string, 2> pair_sections;
-    // for (auto i = 0u, start_section = 0u, end_section = 2u; i < 2; ++i, start_section += 4, end_section += 4) {
-    //   const auto section_begin = line[start_section];
-    //   const auto section_end = line[end_section];
-    //   assert(section_begin >= '0' && section_begin <= '9');
-    //   assert(section_end >= '0' && section_end <= '9');
-    //   assert(section_begin <= section_end);
-
-    //   std::string section;
-    //   const auto section_size = static_cast<uint64_t>(section_end - section_begin) + 1;
-    //   section.resize(section_size);
-    //   for (auto idx = 0u; idx <= section_size; ++idx) {
-    //     section[idx] = section_begin + idx;
-    //   }
-
-    //   pair_sections[i] = section;
-    // }
-
-    // use from_chars to get first number
-    // check that next char is '-'
-    // get next number after 1st '-'
-    // check that next char is ','
-    // compute size of section
-    // redo
     std::array<Section, 2> pair_sections;
     char const * ptr_to_line = line.data();
     std::size_t ptr_size = line.size();
@@ -110,14 +82,13 @@ static std::vector<PairSection> read_sections_from_file(std::string filename)
 
       uint64_t begin_section{};
       std::tie(begin_section, ptr_to_line, ptr_size) = get_number({ ptr_to_line, ptr_size });
-      // std::cout << "begin_section = " << begin_section << "\n";
+
       assert(ptr_to_line[0] == '-');
       ptr_to_line = &(ptr_to_line[1]);
       --ptr_size;
 
       uint64_t end_section{};
       std::tie(end_section, ptr_to_line, ptr_size) = get_number({ ptr_to_line, ptr_size });
-      // std::cout << "end_section = " << end_section << "\n";
 
       assert(begin_section <= end_section);
       const auto section_size = end_section - begin_section;
@@ -140,41 +111,6 @@ static std::vector<PairSection> read_sections_from_file(std::string filename)
 
   return sections;
 }
-
-// static std::tuple<std::string_view, std::string_view> find_longuest_section(auto const & section_pair)
-// {
-//   std::string_view longuest_sections = section_pair[0];
-//   std::string_view shortes_sections = section_pair[1];
-//   if (shortes_sections.size() > longuest_sections.size()) {
-//     std::swap(longuest_sections, shortes_sections);
-//   }
-//   return { longuest_sections, shortes_sections };
-// }
-
-// static bool is_sub_section(std::string_view longuest_section, std::string_view shortes_section)
-// {
-//   const auto pos = longuest_section.find(shortes_section);
-//   return pos != std::string::npos;
-// }
-
-// static std::vector<Section> find_overlapping_sections(std::vector<Section> const & sections)
-// {
-//   std::vector<Section> overlapping_sections;
-
-//   overlapping_sections.reserve(sections.size());
-
-//   for (auto const & section_pair : sections) {
-//     const auto [longuest_sections, shortes_sections] = find_longuest_section(section_pair);
-//     // std::cout << "[" << section_pair[0] << "] [" << section_pair[1] << "] ";
-//     // std::cout << "longuest_sections = [" << longuest_sections << "], shortes_sections = [" << shortes_sections << "]...";
-//     if (is_sub_section(longuest_sections, shortes_sections)) {
-//       // std::cout << " OVERLAPP";
-//       overlapping_sections.push_back(section_pair);
-//     }
-//     // std::cout << "\n";
-//   }
-//   return overlapping_sections;
-// }
 
 static std::tuple<Section, Section> find_longuest_section(PairSection const & section_pair)
 {
