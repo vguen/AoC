@@ -33,7 +33,7 @@ static uint64_t as_number(std::string_view const string_nb)
 static std::vector<uint64_t> get_elf_package(std::ifstream & stream)
 {
   std::vector<uint64_t> elf;
-  std::string line{""};
+  std::string line;
   while (std::getline(stream, line) && !line.empty()) {
     // std::cout << "line: " << std::quoted(line) << "\n";
     elf.push_back(as_number(line));
@@ -63,11 +63,11 @@ static std::vector<uint64_t> sort_elf_by_the_most_calories_carried(std::vector<s
 
   std::transform(std::cbegin(elfs), std::cend(elfs),
     std::begin(elfs_sorted_by_total_calories_carried),
-    [](std::vector<uint64_t> const & elf) {
-      return std::accumulate(std::cbegin(elf), std::cend(elf), 0);
+    [](std::vector<uint64_t> const & elf) -> uint64_t {
+      return std::accumulate(std::cbegin(elf), std::cend(elf), 0UL);
   });
 
-  std::sort(std::begin(elfs_sorted_by_total_calories_carried), std::end(elfs_sorted_by_total_calories_carried), std::greater<uint64_t>());
+  std::sort(std::begin(elfs_sorted_by_total_calories_carried), std::end(elfs_sorted_by_total_calories_carried), std::greater<>());
 
   return elfs_sorted_by_total_calories_carried;
 }
@@ -82,17 +82,24 @@ static void part1(std::vector<uint64_t> const & elfs_sorted_by_total_calories_ca
 static void part2(std::vector<uint64_t> const & elfs_sorted_by_total_calories_carried)
 {
   std::cout << "=== part2 ===" << "\n";
-  const auto total_calories_carried_by_the_3 = std::accumulate(std::cbegin(elfs_sorted_by_total_calories_carried), std::begin(elfs_sorted_by_total_calories_carried) + 3, 0);
+  const uint64_t total_calories_carried_by_the_3 = std::accumulate(std::cbegin(elfs_sorted_by_total_calories_carried), std::begin(elfs_sorted_by_total_calories_carried) + 3, 0UL);
   assert(total_calories_carried_by_the_3 == 206643);
   std::cout << total_calories_carried_by_the_3 << "\n";
 }
 
 int main()
 {
-  const auto elfs = read_the_full_file("input");
-  const auto elfs_sorted_by_total_calories_carried = sort_elf_by_the_most_calories_carried(elfs);
+  try {
+    const auto elfs = read_the_full_file("input");
+    const auto elfs_sorted_by_total_calories_carried = sort_elf_by_the_most_calories_carried(elfs);
 
-  part1(elfs_sorted_by_total_calories_carried);
-  part2(elfs_sorted_by_total_calories_carried);
-  return 0;
+    part1(elfs_sorted_by_total_calories_carried);
+    part2(elfs_sorted_by_total_calories_carried);
+    return 0;
+  }
+  catch (std::exception const & e)
+  {
+    std::cerr << e.what() << "\n";
+    return 1;
+  }
 }

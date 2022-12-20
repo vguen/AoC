@@ -28,7 +28,7 @@ static std::vector<Move> read_full_file(std::string const & filename)
     throw std::runtime_error("could not open file [" + filename + "]");
   }
   std::vector<Move> moves;
-  std::string line{""};
+  std::string line;
   while (std::getline(input, line) && !line.empty()) {
     // line looks like
     // "${their_move} ${my_move}"
@@ -44,18 +44,13 @@ struct Game
   uint64_t score_;
 };
 
-static uint64_t move_to_point(uint64_t move)
-{
-  return move - 'A';
-
-}
-
 static int64_t play(Move const & move)
 {
   // A == Rock    = 0 + 1 => 1
   // B == Paper   = 1 + 1 => 2
   // C == Scisors = 2 + 1 => 3
-  int64_t outcome = (move.mine_ - 23) - move.their_;
+  constexpr auto MAX_ALPHABET_DISTANCE{23};
+  int64_t outcome = (move.mine_ - MAX_ALPHABET_DISTANCE) - move.their_;
   // Go to the idx in the alphabet
   // outcome = move_to_point(outcome);
   // | outcome | == 2 when Rock vs Paper
@@ -67,6 +62,13 @@ static int64_t play(Move const & move)
 
 static uint64_t game_result_to_points(int64_t game_result)
 {
+  // constexpr enum class GAME_RESULT
+  // {
+  //   LOST  = 0,
+  //   DRAW  = 3,
+  //   WON   = 6
+  // };
+
   if (game_result < 0) {
     // it's a lost
     return 0;
@@ -85,7 +87,7 @@ static uint64_t calculate_game_score(int64_t game_result,
   std::vector<char> const & move_points)
 {
   const auto score_point = game_result_to_points(game_result);
-  auto move_point = *(std::find(std::cbegin(move_points), std::cend(move_points), (my_move - 23)));
+  uint64_t move_point = *(std::find(std::cbegin(move_points), std::cend(move_points), (my_move - 23)));
   move_point -= 'A';
   move_point += 1; // off by one !
   // std::cout << my_move << " <=> " << std::to_string(move_point) << " + " << std::to_string(score_point) << " = " << std::to_string(move_point + score_point) << "\n";
@@ -95,7 +97,7 @@ static std::vector<Game> play_the_games(std::vector<Move> const & moves,
     std::vector<char> const & move_points)
 {
   std::vector<Game> games(moves.size());
-  auto i{0u};
+  // auto i{0u};
   for (auto const & move : moves) {
     const auto game_result = play(move);
     // std::cout << "#" << i++ << ": mine = [" << move.mine_ << "] | their = [" << move.their_ << "] | outcome = " << game_result << "\n";
