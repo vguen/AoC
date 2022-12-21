@@ -1,10 +1,17 @@
-#include <deque> // TODO: usefull other than for testing ?
+#include <algorithm>
+#include <cassert>
+#include <charconv>
+#include <deque>
+#include <fstream>
+#include <functional>
+#include <iomanip>
 #include <iostream>
+#include <ranges>
 #include <stack>
 #include <string>
 #include <string_view>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 struct Order
 {
@@ -34,35 +41,187 @@ static std::string use_cli_or_default_value(int argc, char * argv[])
   throw std::runtime_error("Should not end up here");
 }
 
-static std::tuple<Stacks, Orders> read_input()
+static void parse_stacks_line(
+  std::string::iterator & word_it,
+  std::string & line,
+  std::vector<std::deque<char>> & dequed_stacks,
+  std::function<bool(char)> const & is_stack_begin)
 {
-  Stacks stacks;
+  constexpr auto STACK_DISTANCE{4u};
+  constexpr auto STACK_DISPLAY_SIZE{3u};
 
-  stacks.emplace_back(std::deque<char>{ 'Z', 'N' });
-  stacks.emplace_back(std::deque<char>{ 'M', 'C', 'D' });
-  stacks.emplace_back(std::deque<char>{ 'P' });
+  while (word_it != std::end(line)) {
+    assert(word_it[0] == '[');
+    // assert(word_it is UPPER_LETTER)
+    assert(word_it[2] == ']');
+
+    const uint64_t pos_in_line = static_cast<uint64_t>(std::distance(std::begin(line), word_it));
+    const auto stack_idx = pos_in_line / STACK_DISTANCE;
+
+    // std::cout
+    //   << "pos_in_line = " << pos_in_line << " "
+    //   << "stack_idx = " << stack_idx << " "
+    //   << "word_it[1] = " << word_it[1]
+    //   << "\n";
+
+    if (dequed_stacks.size() <= stack_idx) {
+      dequed_stacks.resize(stack_idx + 1);
+    }
+    dequed_stacks[stack_idx].push_front(word_it[1]);
+
+    if (pos_in_line + STACK_DISPLAY_SIZE < line.size()) {
+      std::advance(word_it, STACK_DISPLAY_SIZE);
+    } else {
+      word_it = line.end();
+    }
+    word_it = std::ranges::find_if(word_it, line.end(), is_stack_begin);
+  }
+}
+
+static Stacks read_stacks(std::ifstream & stream)
+{
+  std::vector<std::deque<char>> dequed_stacks;
+
+  constexpr auto is_stack_begin = [](char c){ return c == '['; };
+  constexpr auto is_number = [](char c){ return '0' <= c && c <= '9'; };
+
+  std::string line;
+  while (std::getline(stream, line) && !line.empty()) {
+    auto word_it = std::ranges::find_if(line, is_stack_begin);
+
+    if (word_it == std::end(line)) {
+      // TODO: if right at the beginning word_it == std::end() then
+      // check that the line contains the dequed_stacks number, check that those numbers match their position and the number of dequed_stacks you have
+      // then check that next line is empty
+      auto number_it = std::ranges::find_if(line, is_number);
+      if (number_it == std::end(line)) {
+        throw std::runtime_error("Missing line with the stacks number");
+      }
+    } else {
+      parse_stacks_line(word_it, line, dequed_stacks, is_stack_begin);
+    }
+  }
+
+  assert(dequed_stacks.size() > 0);
+
+  Stacks stacks;
+  stacks.resize(dequed_stacks.size());
+  for (auto i = 0u; i < dequed_stacks.size(); ++i) {
+    stacks[i] = std::stack<char>(dequed_stacks[i]);
+  }
+
+  return stacks;
+}
+
+static std::tuple<int64_t, std::string> parse_number(std::string const & str)
+{
+  int64_t result{};
+ 
+  auto [ptr, ec] { std::from_chars(str.data(), str.data() + str.size(), result) };
+
+  if (ec == std::errc())
+  {
+    const auto pos = ptr - str.data();
+    std::string new_string(std::begin(str) + pos, std::end(str));
+    return { result, new_string };
+  }
+  else if (ec == std::errc::invalid_argument)
+  {
+    std::cout << "That isn't a number.\n";
+  }
+  else if (ec == std::errc::result_out_of_range)
+  {
+    std::cout << "This number is larger than an int.\n";
+  }
+
+  throw std::runtime_error("Should not reach here");
+}
+
+static std::tuple<uint64_t, std::string> parse_unsigned_number(std::string const & str)
+{
+  const auto [result, ptr] = parse_number(str);
+  assert(result > 0);
+  return { static_cast<uint64_t>(result), ptr };
+}
+
+static Orders read_orders(std::ifstream & stream)
+{
+  constexpr auto MOVE_TOKEN_SIZE{4u};
+  constexpr auto FROM_TOKEN_SIZE{4u};
+  constexpr auto TO_TOKEN_SIZE{2u};
 
   Orders orders;
 
-  orders.push_back({ .nb_to_move_ = 1, .stack_src_ = 2 - 1, .stack_dest_ = 1 - 1});
-  orders.push_back({ .nb_to_move_ = 3, .stack_src_ = 1 - 1, .stack_dest_ = 3 - 1});
-  orders.push_back({ .nb_to_move_ = 2, .stack_src_ = 2 - 1, .stack_dest_ = 1 - 1});
-  orders.push_back({ .nb_to_move_ = 1, .stack_src_ = 1 - 1, .stack_dest_ = 2 - 1});
+  std::string line;
+  while (std::getline(stream, line) && !line.empty()) {
+
+    const std::string begin_nb_to_move(std::cbegin(line) + MOVE_TOKEN_SIZE + 1, std::cend(line));
+    const auto [nb_to_move, from_stack_str] = parse_unsigned_number(begin_nb_to_move);
+
+    const std::string advance_from_stack_str(std::cbegin(from_stack_str) + 1 + FROM_TOKEN_SIZE + 1, std::cend(from_stack_str));
+
+    // std::cout
+    //   << "nb_to_move = " << nb_to_move << " | "
+    //   << "from_stack_str = " << std::quoted(from_stack_str) << " | "
+    //   << "advance_from_stack_str = " << std::quoted(advance_from_stack_str)
+    //   << "\n";
+
+    const auto [stack_src, dest_stack_str] = parse_unsigned_number(advance_from_stack_str);
+
+    const std::string advance_dest_stack_str(std::begin(dest_stack_str) + 1 + TO_TOKEN_SIZE + 1, std::cend(dest_stack_str));
+
+    // std::cout
+    //   << "stack_src = " << stack_src << " | "
+    //   << "dest_stack_str = " << std::quoted(dest_stack_str) << " | "
+    //   << "advance_dest_stack_str = " << std::quoted(advance_dest_stack_str)
+    //   << "\n";
+
+    const auto [stack_dest, _] = parse_unsigned_number(advance_dest_stack_str);
+
+    // std::cout << "stack_dest = " << stack_dest << "\n";
+    // std::cout << "\n";
+
+    orders.push_back({
+      .nb_to_move_ = nb_to_move,
+      .stack_src_ = stack_src - 1,
+      .stack_dest_ = stack_dest - 1
+    });
+  }
+
+  return orders;
+}
+
+static std::tuple<Stacks, Orders> read_input(std::string const & filename)
+{
+  std::ifstream stream(filename);
+  if (!stream) {
+    throw std::runtime_error("could not open file [" + filename + "]");
+  }
+
+  auto stacks = read_stacks(stream);
+
+  auto orders = read_orders(stream);
+  // Orders orders;
+
+  // orders.push_back({ .nb_to_move_ = 1, .stack_src_ = 2 - 1, .stack_dest_ = 1 - 1});
+  // orders.push_back({ .nb_to_move_ = 3, .stack_src_ = 1 - 1, .stack_dest_ = 3 - 1});
+  // orders.push_back({ .nb_to_move_ = 2, .stack_src_ = 2 - 1, .stack_dest_ = 1 - 1});
+  // orders.push_back({ .nb_to_move_ = 1, .stack_src_ = 1 - 1, .stack_dest_ = 2 - 1});
 
   return { stacks, orders };
 }
 
-static std::string stack_to_string(std::stack<char> stack)
-{
-  std::string s{"{ "};
-  s.reserve(stack.size());
-  for (auto i = stack.size(); i > 0; --i) {
-    s += stack.top() + std::string(", ");
-    stack.pop();
-  }
-  s += "}";
-  return s;
-}
+// static std::string stack_to_string(std::stack<char> stack)
+// {
+//   std::string s{"{ "};
+//   s.reserve(stack.size());
+//   for (auto i = stack.size(); i > 0; --i) {
+//     s += stack.top() + std::string(", ");
+//     stack.pop();
+//   }
+//   s += "}";
+//   return s;
+// }
 
 static Stacks rearrange_crates(Stacks stacks, Orders const & orders)
 {
@@ -96,7 +255,7 @@ static std::string get_first_crate_of_each_stack(Stacks const & rearrange_stacks
 int main(int argc, char * argv[])
 {
   const auto filename = use_cli_or_default_value(argc, argv);
-  const auto [stacks, orders] = read_input();
+  const auto [stacks, orders] = read_input(filename);
   const auto rearrange_stacks = rearrange_crates(stacks, orders);
   const auto answer = get_first_crate_of_each_stack(rearrange_stacks);
   print_answer(answer);
