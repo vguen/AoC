@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <algorithm>
 #include <cassert>
 #include <charconv>
 #include <fstream>
@@ -64,11 +65,7 @@ std::uint64_t count_visible_trees(TreeMap const & tree_map)
   auto nb_visible_trees{0U};
   
   for (auto const & tree_line : tree_map) {
-    for (auto const & tree : tree_line) {
-      if (tree.from_left_ || tree.from_right_ || tree.from_above_ || tree.from_below_) {
-        nb_visible_trees++;
-      }
-    }
+    nb_visible_trees += std::count_if(tree_line.cbegin(), tree_line.cend(), [](Tree const & tree) { return tree.from_left_ || tree.from_right_ || tree.from_above_ || tree.from_below_; });
   }
   return nb_visible_trees;
 }
