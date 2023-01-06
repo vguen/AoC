@@ -74,9 +74,64 @@ std::uint64_t count_visible_trees(TreeMap const & tree_map)
 /// part 2
 ///
 
-std::vector<std::vector<TreeScenicView>> compute_view_distance(std::vector<std::vector<TreeScenicView>> const & tree_map)
+template<class InputIt, class UnaryFunction>
+constexpr UnaryFunction for_each(InputIt first, InputIt last, UnaryFunction f)
 {
-  return {};
+  for (; first != last; ++first) {
+    // TODO: decltype f param to know when it needs InputIt || InputIt::value
+    f(first);
+  }
+ 
+  return f; // implicit move since C++11
+}
+
+template <typename Range, typename UnaryFunction>
+constexpr UnaryFunction for_each(Range & range, UnaryFunction f)
+{
+  return for_each(std::begin(range), std::end(range));
+}
+
+static void lookup_scenic_view_left(std::vector<std::vector<TreeScenicView>> & tree_map)
+{
+  std::for_each(tree_map.begin(), tree_map.end(), [](std::vector<TreeScenicView> & tree_line) {
+    auto first_tree_in_line = tree_line.front();
+    first_tree_in_line.view_dist_from_left_ = 0;
+
+    for (auto tree_it = tree_line.begin() + 1; tree_it != tree_line.end() - 1; ++tree_it) {
+      auto rev_it = std::make_reverse_iterator(tree_it);
+      tree_it->view_dist_from_left_ = std::count_if(rev_it, tree_line.rend(), [&tree_it](TreeScenicView const & prev) { return tree_it->size_ > prev.size_; });
+    };
+
+    auto last_tree_in_line = tree_line.back();
+    last_tree_in_line.view_dist_from_left_ = 0;
+  });
+}
+
+static void lookup_scenic_view_right(std::vector<std::vector<TreeScenicView>> & tree_map)
+{
+
+}
+
+static void lookup_scenic_view_above_and_below(std::vector<std::vector<TreeScenicView>> & tree_map)
+{
+  swap_matrix(tree_map);
+
+  // above is now left
+  lookup_scenic_view_left(tree_map);
+  // below is now right
+  lookup_scenic_view_right(tree_map);
+
+  // put once again in proper order
+  swap_matrix(tree_map);
+}
+
+std::vector<std::vector<TreeScenicView>> compute_view_distance(std::vector<std::vector<TreeScenicView>> tree_map)
+{
+  lookup_scenic_view_left(tree_map);
+  lookup_scenic_view_right(tree_map);
+  lookup_scenic_view_above_and_below(tree_map);
+
+  return tree_map;
 }
 
 uint64_t calc_max_scenic_view(std::vector<std::vector<TreeScenicView>> const & tree_map)

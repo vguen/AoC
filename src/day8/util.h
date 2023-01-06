@@ -31,6 +31,6 @@ std::uint64_t count_visible_trees(TreeMap const & tree_map);
 
 // part 2
 
-std::vector<std::vector<TreeScenicView>> compute_view_distance(std::vector<std::vector<TreeScenicView>> const & tree_map);
+std::vector<std::vector<TreeScenicView>> compute_view_distance(std::vector<std::vector<TreeScenicView>> tree_map);
 uint64_t calc_max_scenic_view(std::vector<std::vector<TreeScenicView>> const & tree_map);
 
