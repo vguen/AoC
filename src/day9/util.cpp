@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <fmt/fmt.h>
+
 static Pos move_head(Pos pos, Dir dir);
 static Pos move_tail(Pos const & head_pos, Pos tail_pos, Dir dir);
 
@@ -89,8 +91,42 @@ std::tuple<std::vector<Pos>, std::vector<Pos>> move_head_and_tail(std::queue<Mov
   return { head, tail };
 }
 
+std::vector<std::vector<Pos>> move_rope(
+    std::vector<std::vector<Pos>> rope,
+    std::queue<Move> movements)
+{
+  auto & head = rope.front();
+
+  while (!movements.empty()) {
+    auto move = movements.front();
+
+    while (move.nb_move_-- > 0) {
+
+      Pos head_pos = head.back();
+      head_pos = move_head(head_pos, move.dir_);
+      head.push_back(head_pos);
+
+      auto prev_knot = head_pos;
+      for (auto tail = rope.begin() + 1; tail != rope.end(); ++tail) {
+        auto tail_pos = tail->back();
+        tail_pos = move_tail(prev_knot, tail_pos, move.dir_);
+        tail->push_back(tail_pos);
+        prev_knot = tail_pos;
+      }
+
+    }
+
+    movements.pop();
+  }
+
+  return rope;
+}
+
 uint64_t count_position_visited_at_least_once(std::vector<Pos> positions)
 {
+  for (auto const & position : positions) {
+    std::cout << "{}" << "\n";
+  }
   std::ranges::sort(positions);
   const auto ret = std::unique(positions.begin(), positions.end());
   positions.erase(ret, positions.end());

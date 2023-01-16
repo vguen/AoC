@@ -30,5 +30,8 @@ struct Pos
 
 std::queue<Move> read_input(std::string const &);
 std::tuple<std::vector<Pos>, std::vector<Pos>> move_head_and_tail(std::queue<Move>);
+std::vector<std::vector<Pos>> move_rope(
+    std::vector<std::vector<Pos>> rope,
+    std::queue<Move> movements);
 uint64_t count_position_visited_at_least_once(std::vector<Pos>);
 

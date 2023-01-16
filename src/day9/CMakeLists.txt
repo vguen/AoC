@@ -4,6 +4,10 @@ target_sources(day9_util
     util.cpp
     util.h
 )
+target_link_libraries(day9_util
+  PRIVATE
+    fmt::fmt
+)
 
 add_executable(day9_part1)
 target_sources(day9_part1 PRIVATE part1.cpp)

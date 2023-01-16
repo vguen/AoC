@@ -24,7 +24,11 @@ int main(int argc, char * argv[])
 {
   const auto filename = use_cli_or_default_value(argc, argv);
   const auto movements = read_input(filename);
-  const auto [head_positions, tail_positions] = move_head_and_tail(movements);
+
+  std::vector<std::vector<Pos>> rope(2, {{0, 0}});
+  rope = move_rope(rope, movements);
+
+  const auto tail_positions = rope.back();
   const auto nb_tail_position_visited = count_position_visited_at_least_once(tail_positions);
   print_answer(nb_tail_position_visited);
   return 0;
